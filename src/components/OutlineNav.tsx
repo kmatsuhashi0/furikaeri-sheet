@@ -9,9 +9,10 @@ interface OutlineNavProps {
   onSelect: (index: number) => void
   isOpen: boolean
   onClose: () => void
+  onConfirm: () => void
 }
 
-export function OutlineNav({ items, currentIndex, onSelect, isOpen, onClose }: OutlineNavProps) {
+export function OutlineNav({ items, currentIndex, onSelect, isOpen, onClose, onConfirm }: OutlineNavProps) {
   return (
     <>
       {isOpen && <div className="outline-backdrop" onClick={onClose} />}
@@ -37,6 +38,9 @@ export function OutlineNav({ items, currentIndex, onSelect, isOpen, onClose }: O
             </li>
           ))}
         </ol>
+        <button type="button" className="outline-nav__confirm" onClick={onConfirm}>
+          入力内容を確認する
+        </button>
       </aside>
     </>
   )

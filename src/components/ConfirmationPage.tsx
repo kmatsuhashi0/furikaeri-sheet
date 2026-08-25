@@ -4,12 +4,13 @@ import { buildSummaryText } from '../utils/summary'
 import type { LifeStageDef } from '../data/lifeStages'
 import type { FormData } from '../types'
 
-type SendStatus = 'idle' | 'sending' | 'sent' | 'error'
+type SendStatus = 'idle' | 'sending' | 'error'
 
 interface ConfirmationPageProps {
   formData: FormData
   visibleStages: LifeStageDef[]
   onBack: () => void
+  onSent: () => void
 }
 
 function ReviewItem({ label, value }: { label: string; value: string }) {
@@ -21,7 +22,7 @@ function ReviewItem({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function ConfirmationPage({ formData, visibleStages, onBack }: ConfirmationPageProps) {
+export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: ConfirmationPageProps) {
   const { profile, family, lifeStages } = formData
   const { age } = calculateAge(profile.birthDate)
   const filledFamily = family.filter(
@@ -30,6 +31,11 @@ export function ConfirmationPage({ formData, visibleStages, onBack }: Confirmati
 
   const [status, setStatus] = useState<SendStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const scrollToTop = () => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
+  }
 
   const handleSubmit = async () => {
     setStatus('sending')
@@ -49,7 +55,7 @@ export function ConfirmationPage({ formData, visibleStages, onBack }: Confirmati
         throw new Error(data?.error ?? '送信に失敗しました。')
       }
 
-      setStatus('sent')
+      onSent()
     } catch {
       setStatus('error')
       setErrorMessage('送信に失敗しました。しばらくしてから、もう一度お試しください。')
@@ -118,17 +124,17 @@ export function ConfirmationPage({ formData, visibleStages, onBack }: Confirmati
         </button>
       </div>
 
-      {status === 'sent' ? (
-        <p className="notice">送信しました。ご協力ありがとうございました。</p>
-      ) : (
-        <>
-          <button type="button" className="confirm-cta" onClick={handleSubmit} disabled={status === 'sending'}>
-            {status === 'sending' ? '送信しています…' : '送信する'}
-          </button>
-          {status === 'error' && errorMessage && <div className="notice notice--warn">{errorMessage}</div>}
-          <p className="review-note">「送信する」を押すと、入力していただいた内容がまとめて送信されます。</p>
-        </>
-      )}
+      <button type="button" className="confirm-cta" onClick={handleSubmit} disabled={status === 'sending'}>
+        {status === 'sending' ? '送信しています…' : '送信する'}
+      </button>
+      {status === 'error' && errorMessage && <div className="notice notice--warn">{errorMessage}</div>}
+      <p className="review-note">「送信する」を押すと、入力していただいた内容がまとめて送信されます。</p>
+
+      <div className="scroll-top-row">
+        <button type="button" className="scroll-top-button" onClick={scrollToTop}>
+          ↑ ページの一番上に戻る
+        </button>
+      </div>
     </div>
   )
 }

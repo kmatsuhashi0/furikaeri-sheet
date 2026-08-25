@@ -20,6 +20,7 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [sent, setSent] = useState(false)
 
   const { age } = calculateAge(formData.profile.birthDate)
 
@@ -36,7 +37,7 @@ function App() {
 
   useEffect(() => {
     window.scrollTo(0, 0)
-  }, [currentIndex, showConfirmation])
+  }, [currentIndex, showConfirmation, sent])
 
   const currentPage = visiblePages[currentIndex]
 
@@ -71,6 +72,18 @@ function App() {
   const isLastPage = currentIndex === visiblePages.length - 1
   const isFuturePage = currentPage.kind === 'lifeStage' && currentPage.stage.id === 'future'
 
+  if (sent) {
+    return (
+      <div className="sent-page">
+        <p className="sent-page__message">
+          送信しました。
+          <br />
+          ご協力ありがとうございます。
+        </p>
+      </div>
+    )
+  }
+
   if (showConfirmation) {
     return (
       <div className="layout">
@@ -79,6 +92,7 @@ function App() {
             formData={formData}
             visibleStages={visiblePages.flatMap((page) => (page.kind === 'lifeStage' ? [page.stage] : []))}
             onBack={() => setShowConfirmation(false)}
+            onSent={() => setSent(true)}
           />
         </div>
       </div>
@@ -122,30 +136,34 @@ function App() {
         </main>
 
         <footer className="page-nav">
-          <button
-            type="button"
-            className="page-nav__button"
-            onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-            disabled={currentIndex === 0}
-          >
-            ← 戻る
-          </button>
-          <div className="page-nav__status">
-            <span>
-              {currentIndex + 1} / {visiblePages.length}
-            </span>
-            <button type="button" className="page-nav__outline-toggle" onClick={() => setOutlineOpen(true)}>
-              ☰ 目次
-            </button>
+          <div className="page-nav__inner">
+            <div className="page-nav__row">
+              <button
+                type="button"
+                className="page-nav__button"
+                onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                disabled={currentIndex === 0}
+              >
+                ← 戻る
+              </button>
+              <div className="page-nav__status">
+                <span>
+                  {currentIndex + 1} / {visiblePages.length}
+                </span>
+                <button type="button" className="page-nav__outline-toggle" onClick={() => setOutlineOpen(true)}>
+                  ☰ 目次
+                </button>
+              </div>
+              <button
+                type="button"
+                className="page-nav__button"
+                onClick={() => setCurrentIndex((index) => Math.min(visiblePages.length - 1, index + 1))}
+                disabled={isLastPage}
+              >
+                次へ →
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            className="page-nav__button"
-            onClick={() => setCurrentIndex((index) => Math.min(visiblePages.length - 1, index + 1))}
-            disabled={isLastPage}
-          >
-            次へ →
-          </button>
         </footer>
 
         <p className="storage-note">入力内容はこの端末に自動的に保存されます。</p>
@@ -160,6 +178,10 @@ function App() {
         }}
         isOpen={outlineOpen}
         onClose={() => setOutlineOpen(false)}
+        onConfirm={() => {
+          setShowConfirmation(true)
+          setOutlineOpen(false)
+        }}
       />
     </div>
   )

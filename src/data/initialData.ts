@@ -31,7 +31,7 @@ export function createInitialFormData(): FormData {
       furigana: '',
       name: '',
       nickname: '',
-      birthDate: '',
+      birthDate: '1980-01-01',
       movieReason: '',
       dailyLife: '',
     },

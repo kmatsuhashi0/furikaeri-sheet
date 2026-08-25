@@ -16,7 +16,7 @@ export function LifeStagePage({ stage, answers, onSchoolNameChange, onValueChang
     <div className="page">
       <section className="sheet-section">
         <div className="stage-header">
-          <StageBadge top={stage.badgeTop} bottom={stage.badgeBottom} />
+          <StageBadge top={stage.badgeTop} bottom={stage.badgeBottom} equalWeight={stage.id === 'future'} />
           <div className="stage-header__text">
             <p className="stage-intro">{stage.intro}</p>
           </div>
