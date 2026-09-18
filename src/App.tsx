@@ -21,6 +21,8 @@ function App() {
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [sent, setSent] = useState(false)
+  const [sentPdfBlob, setSentPdfBlob] = useState<Blob | null>(null)
+  const [sentPdfUrl, setSentPdfUrl] = useState<string | null>(null)
   const [showSaved, setShowSaved] = useState(false)
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -37,6 +39,13 @@ function App() {
       if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!sentPdfBlob) return
+    const url = URL.createObjectURL(sentPdfBlob)
+    setSentPdfUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [sentPdfBlob])
 
   const { age } = calculateAge(formData.profile.birthDate)
 
@@ -98,6 +107,11 @@ function App() {
           <br />
           担当者からのご連絡をお待ちくださいませ。
         </p>
+        {sentPdfUrl && (
+          <a className="confirm-cta sent-page__download" href={sentPdfUrl} download="furikaeri-sheet.pdf">
+            PDFをダウンロード
+          </a>
+        )}
       </div>
     )
   }
@@ -110,7 +124,10 @@ function App() {
             formData={formData}
             visibleStages={visiblePages.flatMap((page) => (page.kind === 'lifeStage' ? [page.stage] : []))}
             onBack={() => setShowConfirmation(false)}
-            onSent={() => setSent(true)}
+            onSent={(pdfBlob) => {
+              setSentPdfBlob(pdfBlob)
+              setSent(true)
+            }}
           />
         </div>
       </div>

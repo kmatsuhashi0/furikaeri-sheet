@@ -21,7 +21,7 @@ async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasE
   try {
     return await html2canvas(capture, {
       scale: 2,
-      backgroundColor: '#faf8f1',
+      backgroundColor: '#ffffff',
       useCORS: true,
     })
   } finally {
@@ -35,33 +35,18 @@ export async function generateSectionedPdf(sections: ReactElement[]): Promise<Bl
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
 
-  let isFirstPageOverall = true
+  let isFirstPage = true
 
   for (const section of sections) {
     const canvas = await renderSectionToCanvas(section)
-    const ratio = pageWidth / canvas.width
-    const pageHeightInCanvasPx = pageHeight / ratio
+    // 1セクション = 1ページに収まるよう、幅・高さの両方に合わせて縮小する
+    const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
+    const imgWidth = canvas.width * scale
+    const imgHeight = canvas.height * scale
 
-    let renderedHeight = 0
-
-    while (renderedHeight < canvas.height) {
-      const sliceHeight = Math.min(pageHeightInCanvasPx, canvas.height - renderedHeight)
-
-      const sliceCanvas = document.createElement('canvas')
-      sliceCanvas.width = canvas.width
-      sliceCanvas.height = sliceHeight
-      const ctx = sliceCanvas.getContext('2d')
-      if (ctx) {
-        ctx.drawImage(canvas, 0, renderedHeight, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight)
-      }
-
-      const sliceImgHeightPt = sliceHeight * ratio
-      if (!isFirstPageOverall) pdf.addPage()
-      pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageWidth, sliceImgHeightPt)
-
-      renderedHeight += sliceHeight
-      isFirstPageOverall = false
-    }
+    if (!isFirstPage) pdf.addPage()
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, imgWidth, imgHeight)
+    isFirstPage = false
   }
 
   return pdf.output('blob')

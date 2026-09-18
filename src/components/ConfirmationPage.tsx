@@ -9,7 +9,7 @@ interface ConfirmationPageProps {
   formData: FormData
   visibleStages: LifeStageDef[]
   onBack: () => void
-  onSent: () => void
+  onSent: (pdfBlob: Blob) => void
 }
 
 function ReviewItem({ label, value }: { label: string; value: string }) {
@@ -78,7 +78,7 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
         throw new Error(data?.error ?? '送信に失敗しました。')
       }
 
-      onSent()
+      onSent(pdfBlob)
     } catch {
       setStatus('error')
       setErrorMessage('送信に失敗しました。しばらくしてから、もう一度お試しください。')
