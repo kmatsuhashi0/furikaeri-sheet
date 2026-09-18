@@ -90,13 +90,6 @@ body {
   margin-top: 36px;
 }
 
-.review-printable {
-  display: flex;
-  flex-direction: column;
-  gap: 44px;
-  background: var(--color-bg);
-}
-
 .sheet-section__title {
   font-family: var(--font-body);
   font-weight: 700;
@@ -260,6 +253,27 @@ input[type='date']:focus {
   border-bottom-color: var(--color-accent);
 }
 
+.print-value {
+  display: block;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--color-ink);
+  background: transparent;
+  border-bottom: 1.5px solid var(--color-line);
+  padding: 8px 2px;
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.print-value--birthdate {
+  width: auto;
+  min-width: 160px;
+  flex: none;
+}
+
 .auto-textarea {
   font-family: var(--font-body);
   font-size: 16px;
@@ -274,6 +288,23 @@ input[type='date']:focus {
   outline: none;
   transition: border-color 0.15s ease;
   min-height: 3.6em;
+}
+
+.print-textarea-value {
+  display: block;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-height: 3.6em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-sizing: border-box;
 }
 
 .auto-textarea:focus {
@@ -355,6 +386,10 @@ input[type='date']:focus {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
   border-radius: 12px;
+}
+
+.family-row--print {
+  padding-right: 16px;
 }
 
 .family-row__field {
@@ -915,4 +950,24 @@ input[type='date']:focus {
   color: var(--color-accent-ink);
   text-align: center;
   text-wrap: balance;
+}
+
+/* ---------- PDF capture (offscreen) ---------- */
+.pdf-offscreen-host {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.pdf-capture {
+  width: 720px;
+  box-sizing: border-box;
+  padding: 32px;
+  background: var(--color-bg);
+}
+
+.pdf-capture .page {
+  margin-top: 0;
 }
