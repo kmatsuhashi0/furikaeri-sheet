@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BasicInfoPage } from './components/BasicInfoPage'
 import { LifeStagePage } from './components/LifeStagePage'
 import { OutlineNav } from './components/OutlineNav'
@@ -21,6 +21,22 @@ function App() {
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [sent, setSent] = useState(false)
+  const [showSaved, setShowSaved] = useState(false)
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleFieldBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    const tag = (event.target as HTMLElement).tagName
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') return
+    setShowSaved(true)
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    savedTimeoutRef.current = setTimeout(() => setShowSaved(false), 2000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    }
+  }, [])
 
   const { age } = calculateAge(formData.profile.birthDate)
 
@@ -103,7 +119,7 @@ function App() {
 
   return (
     <div className="layout">
-      <div className="app">
+      <div className="app" onBlur={handleFieldBlur}>
         {currentPage.kind === 'basicInfo' && (
           <header className="app-header">
             <h1 className="app-header__title">振り返りシート</h1>
@@ -169,6 +185,10 @@ function App() {
         </footer>
 
         <p className="storage-note">入力内容はこの端末に自動的に保存されます。</p>
+      </div>
+
+      <div className={`save-toast${showSaved ? ' save-toast--visible' : ''}`} role="status" aria-live="polite">
+        ✓ 保存しました
       </div>
 
       <OutlineNav

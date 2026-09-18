@@ -90,6 +90,13 @@ body {
   margin-top: 36px;
 }
 
+.review-printable {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  background: var(--color-bg);
+}
+
 .sheet-section__title {
   font-family: var(--font-body);
   font-weight: 700;
@@ -794,6 +801,35 @@ input[type='date']:focus {
   color: var(--color-muted);
   font-size: 12.5px;
   margin-top: 28px;
+}
+
+.save-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px -8px rgba(20, 20, 15, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 50;
+}
+
+.save-toast--visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-toast {
+    transition: none;
+  }
 }
 
 @media (max-width: 600px) {

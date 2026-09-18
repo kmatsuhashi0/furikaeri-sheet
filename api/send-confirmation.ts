@@ -21,7 +21,7 @@ export default async function handler(request: Request): Promise<Response> {
     return jsonResponse(500, { error: 'サーバー側の設定が完了していません。管理者にご連絡ください。' })
   }
 
-  let payload: { subject?: string; body?: string }
+  let payload: { subject?: string; pdfBase64?: string }
   try {
     payload = await request.json()
   } catch {
@@ -29,8 +29,8 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const subject = payload.subject?.trim()
-  const body = payload.body?.trim()
-  if (!subject || !body) {
+  const pdfBase64 = payload.pdfBase64?.trim()
+  if (!subject || !pdfBase64) {
     return jsonResponse(400, { error: '送信内容が不足しています。' })
   }
 
@@ -44,7 +44,13 @@ export default async function handler(request: Request): Promise<Response> {
       from: 'Furikaeri Sheet <onboarding@resend.dev>',
       to: toEmail,
       subject,
-      text: body,
+      text: '振り返りシートの回答が届きました。添付のPDFをご確認ください。',
+      attachments: [
+        {
+          filename: 'furikaeri-sheet.pdf',
+          content: pdfBase64,
+        },
+      ],
     }),
   })
 
