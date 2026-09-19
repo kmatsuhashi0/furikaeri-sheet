@@ -2,6 +2,20 @@ import type { ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import UPNG from 'upng-js'
+
+const CAPTURE_SCALE = 2
+const TARGET_DPI = 170
+const PNG_COLORS = 256
+// 1通あたりの目標サイズ。サーバーの受付上限(約4.5MB)に余裕を持たせる
+const PART_TARGET_BYTES = 3_600_000
+const PART_HARD_LIMIT_BYTES = 4_200_000
+
+interface PageImage {
+  png: Uint8Array
+  widthPt: number
+  heightPt: number
+}
 
 async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasElement> {
   const host = document.createElement('div')
@@ -20,7 +34,7 @@ async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasE
 
   try {
     return await html2canvas(capture, {
-      scale: 1.5,
+      scale: CAPTURE_SCALE,
       backgroundColor: '#ffffff',
       useCORS: true,
     })
@@ -30,71 +44,84 @@ async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasE
   }
 }
 
-interface QualityTier {
-  dpi: number
-  jpeg: number
+function canvasToPageImage(canvas: HTMLCanvasElement, pageWidthPt: number, pageHeightPt: number): PageImage {
+  // 1セクション = 1ページに収まるよう、幅・高さの両方に合わせて縮小する
+  const scale = Math.min(pageWidthPt / canvas.width, pageHeightPt / canvas.height)
+  const widthPt = canvas.width * scale
+  const heightPt = canvas.height * scale
+
+  const targetWidth = Math.min(canvas.width, Math.round((widthPt / 72) * TARGET_DPI))
+  const targetHeight = Math.max(1, Math.round((targetWidth * canvas.height) / canvas.width))
+  const pageCanvas = document.createElement('canvas')
+  pageCanvas.width = targetWidth
+  pageCanvas.height = targetHeight
+  const ctx = pageCanvas.getContext('2d')
+  if (!ctx) throw new Error('canvas unavailable')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, targetWidth, targetHeight)
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight)
+
+  // 文字や罫線は色数が少ないため、256色のPNGにすると、にじまずに軽くできる
+  const { data } = ctx.getImageData(0, 0, targetWidth, targetHeight)
+  const png = new Uint8Array(UPNG.encode([data.buffer as ArrayBuffer], targetWidth, targetHeight, PNG_COLORS))
+  return { png, widthPt, heightPt }
 }
 
-// 文章量が多くてもサーバーの受付上限（約4.5MB）を超えないよう、大きすぎる場合は段階的に画質を下げる
-const QUALITY_TIERS: QualityTier[] = [
-  { dpi: 130, jpeg: 0.7 },
-  { dpi: 100, jpeg: 0.55 },
-  { dpi: 80, jpeg: 0.45 },
-]
-const MAX_PDF_BYTES = 2_800_000
-
-async function buildPdf(sections: ReactElement[], tier: QualityTier): Promise<Blob> {
+function buildPdf(pages: PageImage[]): Blob {
   const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
-
-  let isFirstPage = true
-
-  for (const section of sections) {
-    const canvas = await renderSectionToCanvas(section)
-    // 1セクション = 1ページに収まるよう、幅・高さの両方に合わせて縮小する
-    const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
-    const imgWidth = canvas.width * scale
-    const imgHeight = canvas.height * scale
-
-    const targetWidth = Math.min(canvas.width, Math.round((imgWidth / 72) * tier.dpi))
-    const targetHeight = Math.max(1, Math.round((targetWidth * canvas.height) / canvas.width))
-    const pageCanvas = document.createElement('canvas')
-    pageCanvas.width = targetWidth
-    pageCanvas.height = targetHeight
-    const ctx = pageCanvas.getContext('2d')
-    if (ctx) {
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, targetWidth, targetHeight)
-      ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight)
-    }
-
-    if (!isFirstPage) pdf.addPage()
-    pdf.addImage(pageCanvas.toDataURL('image/jpeg', tier.jpeg), 'JPEG', 0, 0, imgWidth, imgHeight)
-    isFirstPage = false
-  }
-
+  pages.forEach((page, index) => {
+    if (index > 0) pdf.addPage()
+    pdf.addImage(page.png, 'PNG', 0, 0, page.widthPt, page.heightPt)
+  })
   return pdf.output('blob')
 }
 
-export async function generateSectionedPdf(sections: ReactElement[]): Promise<Blob> {
-  let blob: Blob | null = null
-  for (const tier of QUALITY_TIERS) {
-    blob = await buildPdf(sections, tier)
-    if (blob.size <= MAX_PDF_BYTES) return blob
+function packPages(pages: PageImage[], targetBytes: number): PageImage[][] {
+  const groups: PageImage[][] = []
+  let current: PageImage[] = []
+  let currentBytes = 0
+  for (const page of pages) {
+    const pageBytes = page.png.length + 2_000
+    if (current.length > 0 && currentBytes + pageBytes > targetBytes) {
+      groups.push(current)
+      current = []
+      currentBytes = 0
+    }
+    current.push(page)
+    currentBytes += pageBytes
   }
-  return blob as Blob
+  if (current.length > 0) groups.push(current)
+  return groups
 }
 
-export function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1] ?? '')
-    }
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(blob)
-  })
+export interface GeneratedPdf {
+  /** 回答者がダウンロードする、全ページ入りの1つのPDF */
+  full: Blob
+  /** メールで送る単位。サイズが大きい場合は複数に分割される */
+  parts: Blob[]
+}
+
+export async function generateSectionedPdf(sections: ReactElement[]): Promise<GeneratedPdf> {
+  const probe = new jsPDF({ unit: 'pt', format: 'a4' })
+  const pageWidth = probe.internal.pageSize.getWidth()
+  const pageHeight = probe.internal.pageSize.getHeight()
+
+  const pages: PageImage[] = []
+  for (const section of sections) {
+    const canvas = await renderSectionToCanvas(section)
+    pages.push(canvasToPageImage(canvas, pageWidth, pageHeight))
+  }
+
+  const full = buildPdf(pages)
+  if (full.size <= PART_TARGET_BYTES) return { full, parts: [full] }
+
+  let target = PART_TARGET_BYTES
+  let parts: Blob[] = []
+  for (let attempt = 0; attempt < 4; attempt++) {
+    parts = packPages(pages, target).map(buildPdf)
+    if (parts.every((part) => part.size <= PART_HARD_LIMIT_BYTES)) break
+    target *= 0.7
+  }
+  return { full, parts }
 }

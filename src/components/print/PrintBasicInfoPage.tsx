@@ -14,7 +14,7 @@ export function PrintBasicInfoPage({ formData }: PrintBasicInfoPageProps) {
   )
 
   return (
-    <div className="page">
+    <div className="page print-basic">
       <section className="sheet-section">
         <h2 className="sheet-section__title">基本情報</h2>
         <div className="info-card">

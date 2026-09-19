@@ -1014,3 +1014,46 @@ input[type='date']:focus {
 .pdf-capture .page {
   margin-top: 0;
 }
+
+/* PDFの基本情報ページは項目が多いため、余白を詰める */
+.pdf-capture .print-basic {
+  gap: 22px;
+}
+
+.pdf-capture .print-basic .sheet-section__title {
+  padding-bottom: 6px;
+  margin-bottom: 0;
+}
+
+.pdf-capture .print-basic .info-card {
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px 18px;
+}
+
+.pdf-capture .print-basic .form-field,
+.pdf-capture .print-basic .name-group__item {
+  gap: 2px;
+}
+
+.pdf-capture .print-basic .print-value {
+  padding: 4px 2px;
+}
+
+.pdf-capture .print-basic .print-textarea-value {
+  padding: 9px 14px;
+  line-height: 1.7;
+  min-height: 2.6em;
+}
+
+.pdf-capture .print-basic .form-field > label {
+  font-size: 12.5px;
+}
+
+.pdf-capture .print-basic .sheet-section > .form-field {
+  margin-top: 8px;
+}
+
+.pdf-capture .print-basic .print-family-list {
+  margin-top: 10px;
+}

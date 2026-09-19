@@ -59,9 +59,11 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
     setErrorMessage(null)
     setFailedPdfBlob(null)
     let generatedPdf: Blob | null = null
+    let sentCount = 0
+    let totalParts = 1
     try {
       setStatus('generating')
-      const [{ generateSectionedPdf, blobToBase64 }, { PrintBasicInfoPage }, { PrintLifeStagePage }] = await Promise.all([
+      const [{ generateSectionedPdf }, { PrintBasicInfoPage }, { PrintLifeStagePage }] = await Promise.all([
         import('../utils/generatePdf'),
         import('./print/PrintBasicInfoPage'),
         import('./print/PrintLifeStagePage'),
@@ -74,30 +76,35 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
         )),
       ]
 
-      const pdfBlob = await generateSectionedPdf(sections)
-      generatedPdf = pdfBlob
-      const pdfBase64 = await blobToBase64(pdfBlob)
+      const { full, parts } = await generateSectionedPdf(sections)
+      generatedPdf = full
+      totalParts = parts.length
 
       setStatus('sending')
-      const response = await fetch('/api/send-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: `振り返りシートの回答（${profile.name.trim() || '氏名未記入'}）`,
-          pdfBase64,
-        }),
-      })
+      const subject = `振り返りシートの回答（${profile.name.trim() || '氏名未記入'}）`
+      for (let index = 0; index < parts.length; index++) {
+        const query = new URLSearchParams({ subject, part: String(index + 1), total: String(parts.length) })
+        const response = await fetch(`/api/send-confirmation?${query.toString()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/pdf' },
+          body: parts[index],
+        })
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null)
-        throw new Error(data?.error ?? '送信に失敗しました。')
+        if (!response.ok) {
+          sentCount = index
+          throw new Error('送信に失敗しました。')
+        }
       }
 
-      onSent(pdfBlob)
+      onSent(full)
     } catch {
       setStatus('error')
       setFailedPdfBlob(generatedPdf)
-      setErrorMessage('送信に失敗しました。しばらくしてから、もう一度お試しください。')
+      setErrorMessage(
+        totalParts > 1 && sentCount > 0
+          ? `送信が途中で失敗しました（全${totalParts}通のうち${sentCount}通は送信済みです）。しばらくしてから、もう一度お試しください。`
+          : '送信に失敗しました。しばらくしてから、もう一度お試しください。',
+      )
     }
   }
 
