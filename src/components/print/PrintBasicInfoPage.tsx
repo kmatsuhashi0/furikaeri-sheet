@@ -56,25 +56,29 @@ export function PrintBasicInfoPage({ formData }: PrintBasicInfoPageProps) {
         {filledFamily.length === 0 ? (
           <p className="review-empty">入力はありません。</p>
         ) : (
-          <ul className="family-list">
+          <ul className="print-family-list">
             {filledFamily.map((member) => (
-              <li className="family-row family-row--print" key={member.id}>
-                <div className="family-row__field family-row__field--relationship">
-                  <span className="family-row__label">続柄</span>
-                  <span className="print-value">{member.relationship}</span>
+              <li className="print-family-card" key={member.id}>
+                <div className="print-family-row">
+                  <div className="print-family-cell">
+                    <span className="family-row__label">続柄</span>
+                    <span className="print-value print-value--compact">{member.relationship}</span>
+                  </div>
+                  <div className="print-family-cell">
+                    <span className="family-row__label">お名前（ふりがな）</span>
+                    <span className="print-value print-value--compact">{member.nameFurigana}</span>
+                  </div>
+                  <div className="print-family-cell">
+                    <span className="family-row__label">生まれた年</span>
+                    <span className="print-value print-value--compact">{member.birthYear}</span>
+                  </div>
                 </div>
-                <div className="family-row__field family-row__field--name">
-                  <span className="family-row__label">お名前（ふりがな）</span>
-                  <span className="print-value">{member.nameFurigana}</span>
-                </div>
-                <div className="family-row__field family-row__field--birthyear">
-                  <span className="family-row__label">生まれた年</span>
-                  <span className="print-value">{member.birthYear}</span>
-                </div>
-                <div className="family-row__field family-row__field--note">
-                  <span className="family-row__label">備考</span>
-                  <span className="print-value">{member.note}</span>
-                </div>
+                {member.note.trim() && (
+                  <div className="print-family-cell print-family-note">
+                    <span className="family-row__label">備考</span>
+                    <span className="print-value print-value--compact">{member.note}</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
