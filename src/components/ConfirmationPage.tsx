@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { calculateAge } from '../utils/age'
 import type { LifeStageDef } from '../data/lifeStages'
 import type { FormData } from '../types'
@@ -37,6 +37,18 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
 
   const [status, setStatus] = useState<SendStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [failedPdfBlob, setFailedPdfBlob] = useState<Blob | null>(null)
+  const [failedPdfUrl, setFailedPdfUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!failedPdfBlob) {
+      setFailedPdfUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(failedPdfBlob)
+    setFailedPdfUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [failedPdfBlob])
 
   const scrollToTop = () => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -45,6 +57,8 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
 
   const handleSubmit = async () => {
     setErrorMessage(null)
+    setFailedPdfBlob(null)
+    let generatedPdf: Blob | null = null
     try {
       setStatus('generating')
       const [{ generateSectionedPdf, blobToBase64 }, { PrintBasicInfoPage }, { PrintLifeStagePage }] = await Promise.all([
@@ -61,6 +75,7 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
       ]
 
       const pdfBlob = await generateSectionedPdf(sections)
+      generatedPdf = pdfBlob
       const pdfBase64 = await blobToBase64(pdfBlob)
 
       setStatus('sending')
@@ -81,6 +96,7 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
       onSent(pdfBlob)
     } catch {
       setStatus('error')
+      setFailedPdfBlob(generatedPdf)
       setErrorMessage('送信に失敗しました。しばらくしてから、もう一度お試しください。')
     }
   }
@@ -152,7 +168,21 @@ export function ConfirmationPage({ formData, visibleStages, onBack, onSent }: Co
       <button type="button" className="confirm-cta" onClick={handleSubmit} disabled={isBusy}>
         {STATUS_LABEL[status]}
       </button>
-      {status === 'error' && errorMessage && <div className="notice notice--warn">{errorMessage}</div>}
+      {status === 'error' && errorMessage && (
+        <div className="notice notice--warn">
+          {errorMessage}
+          {failedPdfUrl && (
+            <>
+              <br />
+              お手数ですが、下のリンクからPDFを保存し、担当者へ直接お送りください。
+              <br />
+              <a href={failedPdfUrl} download="furikaeri-sheet.pdf">
+                PDFをダウンロード
+              </a>
+            </>
+          )}
+        </div>
+      )}
       <p className="review-note">
         「送信する」を押すと、入力していただいた内容をまとめたPDFが作成され、送信されます。
       </p>

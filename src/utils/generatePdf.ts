@@ -20,7 +20,7 @@ async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasE
 
   try {
     return await html2canvas(capture, {
-      scale: 2,
+      scale: 1.5,
       backgroundColor: '#ffffff',
       useCORS: true,
     })
@@ -30,8 +30,21 @@ async function renderSectionToCanvas(element: ReactElement): Promise<HTMLCanvasE
   }
 }
 
-export async function generateSectionedPdf(sections: ReactElement[]): Promise<Blob> {
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+interface QualityTier {
+  dpi: number
+  jpeg: number
+}
+
+// 文章量が多くてもサーバーの受付上限（約4.5MB）を超えないよう、大きすぎる場合は段階的に画質を下げる
+const QUALITY_TIERS: QualityTier[] = [
+  { dpi: 130, jpeg: 0.7 },
+  { dpi: 100, jpeg: 0.55 },
+  { dpi: 80, jpeg: 0.45 },
+]
+const MAX_PDF_BYTES = 2_800_000
+
+async function buildPdf(sections: ReactElement[], tier: QualityTier): Promise<Blob> {
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
 
@@ -44,12 +57,34 @@ export async function generateSectionedPdf(sections: ReactElement[]): Promise<Bl
     const imgWidth = canvas.width * scale
     const imgHeight = canvas.height * scale
 
+    const targetWidth = Math.min(canvas.width, Math.round((imgWidth / 72) * tier.dpi))
+    const targetHeight = Math.max(1, Math.round((targetWidth * canvas.height) / canvas.width))
+    const pageCanvas = document.createElement('canvas')
+    pageCanvas.width = targetWidth
+    pageCanvas.height = targetHeight
+    const ctx = pageCanvas.getContext('2d')
+    if (ctx) {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, targetWidth, targetHeight)
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight)
+    }
+
     if (!isFirstPage) pdf.addPage()
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, imgWidth, imgHeight)
+    pdf.addImage(pageCanvas.toDataURL('image/jpeg', tier.jpeg), 'JPEG', 0, 0, imgWidth, imgHeight)
     isFirstPage = false
   }
 
   return pdf.output('blob')
+}
+
+export async function generateSectionedPdf(sections: ReactElement[]): Promise<Blob> {
+  let blob: Blob | null = null
+  for (const tier of QUALITY_TIERS) {
+    blob = await buildPdf(sections, tier)
+    if (blob.size <= MAX_PDF_BYTES) return blob
+  }
+  return blob as Blob
 }
 
 export function blobToBase64(blob: Blob): Promise<string> {
